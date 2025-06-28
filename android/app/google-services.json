@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "840575688524",
+    "project_id": "travellapp-34d57",
+    "storage_bucket": "travellapp-34d57.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:840575688524:android:4f4cbc93f394ba092e39e9",
+        "android_client_info": {
+          "package_name": "com.example.travellapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBIaf680zQQHnKJuza4wQy6LK7vQ8wD0QY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
