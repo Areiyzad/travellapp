@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:travellapp/pages/home.dart';
+import 'package:travellapp/pages/top_places.dart';
 
 void main() {
   runApp(const MyApp());
@@ -12,6 +14,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Flutter Demo',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         // This is the theme of your application.
         //
@@ -30,7 +33,7 @@ class MyApp extends StatelessWidget {
         // tested with just a hot reload.
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: Home() //TopPlaces() 
     );
   }
 }
