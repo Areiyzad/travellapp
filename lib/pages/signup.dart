@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'homepage.dart';
+import 'package:travellapp/pages/home.dart';
 
 class SignUpScreen extends StatefulWidget {
   @override
@@ -43,7 +43,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         ));
 
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => HomePage()),
+          MaterialPageRoute(builder: (_) => Home()),
         );
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(

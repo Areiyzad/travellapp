@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:travellapp/pages/home.dart';
 import 'signup.dart';
-import 'homepage.dart';
 
 class LoginScreen extends StatefulWidget {
   @override
@@ -37,7 +37,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ));
 
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => HomePage()),
+          MaterialPageRoute(builder: (_) => Home()),
         );
       } on FirebaseAuthException catch (e) {
         String error = '';
@@ -144,12 +144,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       SizedBox(height: 24),
                       ElevatedButton(
                         onPressed: _isLoading ? null : _login,
-                        child: _isLoading
-                            ? CircularProgressIndicator(
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                    Colors.white),
-                              )
-                            : Text('Login'),
                         style: ElevatedButton.styleFrom(
                           minimumSize: Size(double.infinity, 48),
                           backgroundColor: Color(0xFF4facfe),
@@ -157,6 +151,12 @@ class _LoginScreenState extends State<LoginScreen> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
+                        child: _isLoading
+                            ? CircularProgressIndicator(
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white),
+                              )
+                            : Text('Login'),
                       ),
                       TextButton(
                         onPressed: () {
