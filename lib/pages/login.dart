@@ -73,9 +73,9 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       body: Container(
         padding: EdgeInsets.all(24),
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFF4facfe), Color(0xFF00f2fe)],
+            colors: [Color(0xFFB2DFDB), Color(0xFFB2DFDB)], // soft minty background
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -84,15 +84,15 @@ class _LoginScreenState extends State<LoginScreen> {
           child: SingleChildScrollView(
             child: Column(
               children: [
-                Text(
+                const Text(
                   'Welcome Back!',
                   style: TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: Color(0xFF26A69A), // consistent with splash screen
                   ),
                 ),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
                 Form(
                   key: _formKey,
                   child: Column(
@@ -146,7 +146,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         onPressed: _isLoading ? null : _login,
                         style: ElevatedButton.styleFrom(
                           minimumSize: Size(double.infinity, 48),
-                          backgroundColor: Color(0xFF4facfe),
+                          backgroundColor: Color(0xFF26A69A), // button color
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -164,9 +164,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             MaterialPageRoute(builder: (_) => SignUpScreen()),
                           );
                         },
-                        child: Text(
+                        child: const Text(
                           "Don't have an account? Sign Up",
-                          style: TextStyle(color: Colors.white),
+                          style: TextStyle(color: Color(0xFF26A69A)),
                         ),
                       ),
                     ],

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:travellapp/pages/add_page.dart';
 import 'pages/login.dart';
 
 void main() async {
@@ -74,12 +75,8 @@ class _SplashScreenState extends State<SplashScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF667eea), Color(0xFF764ba2)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+        decoration: const BoxDecoration(
+          color: Color(0xFF26A69A), // Teal background
         ),
         child: Center(
           child: AnimatedBuilder(
@@ -96,8 +93,7 @@ class _SplashScreenState extends State<SplashScreen>
                         width: 120,
                         height: 120,
                         decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(30),
+                          borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black26,
@@ -106,15 +102,17 @@ class _SplashScreenState extends State<SplashScreen>
                             ),
                           ],
                         ),
-                        child: Icon(
-                          Icons.apps,
-                          size: 60,
-                          color: Color(0xFF667eea),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(20),
+                          child: Image.asset(
+                            'images/logo.png', 
+                            fit: BoxFit.cover,
+                          ),
                         ),
                       ),
                       SizedBox(height: 30),
                       Text(
-                        'CRUD Master',
+                        'Travelly App',
                         style: TextStyle(
                           fontSize: 32,
                           fontWeight: FontWeight.bold,
@@ -123,7 +121,7 @@ class _SplashScreenState extends State<SplashScreen>
                       ),
                       SizedBox(height: 10),
                       Text(
-                        'Manage your data with style',
+                        'Explore the world with us',
                         style: TextStyle(
                           fontSize: 16,
                           color: Colors.white70,
