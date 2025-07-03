@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:travellapp/pages/add_page.dart';
 import 'pages/login.dart';
 
 void main() async {
@@ -18,7 +19,7 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
         fontFamily: 'Roboto',
       ),
-      home: SplashScreen(),
+      home: AddPage(),
     );
   }
 }
