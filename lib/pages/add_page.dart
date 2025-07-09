@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:random_string/random_string.dart';
 
 class AddPage extends StatefulWidget {
   const AddPage({super.key});
@@ -26,6 +26,27 @@ class _AddPageState extends State<AddPage> {
     }
   }
 
+  Future<String?> uploadToCloudinary(File imageFile) async {
+    final cloudName = 'dtdn4tdom';
+    final uploadPreset = 'travellapp_unsigned';
+    final uri = Uri.parse("https://api.cloudinary.com/v1_1/$cloudName/image/upload");
+
+    final request = http.MultipartRequest('POST', uri)
+      ..fields['upload_preset'] = uploadPreset
+      ..files.add(await http.MultipartFile.fromPath('file', imageFile.path));
+
+    final response = await request.send();
+
+    if (response.statusCode == 200) {
+      final respStr = await response.stream.bytesToString();
+      final jsonResp = json.decode(respStr);
+      return jsonResp['secure_url'];
+    } else {
+      print('Upload failed: ${response.statusCode}');
+      return null;
+    }
+  }
+
   TextEditingController placenamecontroller = TextEditingController();
   TextEditingController citynamecontroller = TextEditingController();
   TextEditingController captioncontroller = TextEditingController();
@@ -39,7 +60,7 @@ class _AddPageState extends State<AddPage> {
       appBar: AppBar(
         backgroundColor: mainColor,
         title: const Text("Add Post"),
-        centerTitle: false, // 🔁 Title aligned to the left
+        centerTitle: false,
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -171,17 +192,18 @@ class _AddPageState extends State<AddPage> {
                                 placenamecontroller.text.isNotEmpty &&
                                 citynamecontroller.text.isNotEmpty &&
                                 captioncontroller.text.isNotEmpty) {
-                              String addId = randomAlphaNumeric(10);
-                              Reference firebaseStorageRef = FirebaseStorage.instance
-                                  .ref()
-                                  .child("blogImages")
-                                  .child("$addId.jpg");
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text("Uploading image...")),
+                              );
 
-                              UploadTask uploadTask =
-                                  firebaseStorageRef.putFile(selectedImage!);
-                              await uploadTask.whenComplete(() => null);
-                              String downloadUrl =
-                                  await firebaseStorageRef.getDownloadURL();
+                              String? downloadUrl = await uploadToCloudinary(selectedImage!);
+
+                              if (downloadUrl == null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text("❌ Image upload failed.")),
+                                );
+                                return;
+                              }
 
                               User? currentUser = FirebaseAuth.instance.currentUser;
                               if (currentUser != null) {
@@ -189,7 +211,9 @@ class _AddPageState extends State<AddPage> {
                                     .collection('users')
                                     .doc(currentUser.uid)
                                     .get();
+
                                 String username = userDoc['name'] ?? 'Unknown';
+                                String profileImageUrl = userDoc['profileImageUrl'] ?? '';
 
                                 await FirebaseFirestore.instance.collection("posts").add({
                                   "imageUrl": downloadUrl,
@@ -197,6 +221,8 @@ class _AddPageState extends State<AddPage> {
                                   "city": citynamecontroller.text.trim(),
                                   "caption": captioncontroller.text.trim(),
                                   "username": username,
+                                  "uid": currentUser.uid,
+                                  "profileImageUrl": profileImageUrl,
                                   "createdAt": FieldValue.serverTimestamp(),
                                 });
 

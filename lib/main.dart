@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
-import 'package:travellapp/pages/add_page.dart';
 import 'pages/login.dart';
 
 void main() async {
@@ -124,7 +123,7 @@ class _SplashScreenState extends State<SplashScreen>
                       ),
                       SizedBox(height: 10),
                       Text(
-                        'Explore the world with us',
+                        'Where Next? Explore the world with us',
                         style: TextStyle(
                           fontSize: 16,
                           color: Colors.white70,

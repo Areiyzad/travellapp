@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:travellapp/pages/add_page.dart';
 import 'package:travellapp/pages/comment.dart';
 import 'package:travellapp/pages/profile_page.dart';
-import 'package:travellapp/pages/top_places.dart'; // Dream Itinerary feature
+import 'package:travellapp/pages/top_places.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 const Color primaryColor = Color(0xFF26a69a);
 
@@ -16,17 +18,45 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> {
-  bool isLiked = false;
+  String? currentUserId;
+  String? profileImageUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchProfileImage();
+    currentUserId = FirebaseAuth.instance.currentUser?.uid;
+  }
+
+  Future<void> fetchProfileImage() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    final snapshot =
+        await FirebaseFirestore.instance.collection('users').doc(uid).get();
+    setState(() {
+      profileImageUrl = snapshot.data()?['profileImageUrl'];
+    });
+  }
+
+  Future<Map<String, dynamic>> fetchUserData(String uid) async {
+    final userDoc =
+        await FirebaseFirestore.instance.collection('users').doc(uid).get();
+    return userDoc.data() ?? {};
+  }
+
+  Future<void> deletePost(String postId) async {
+    await FirebaseFirestore.instance.collection('posts').doc(postId).delete();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final String userName = widget.userData['name'] ?? 'Traveler';
-
     return Scaffold(
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // -------------------------- Top Header Section --------------------------
             Stack(
               children: [
                 Image.asset(
@@ -39,7 +69,6 @@ class _HomeState extends State<Home> {
                   padding: const EdgeInsets.only(top: 40.0, right: 20.0, left: 20.0),
                   child: Row(
                     children: [
-                      // ✅ Circular logo
                       ClipRRect(
                         borderRadius: BorderRadius.circular(30),
                         child: Image.asset(
@@ -50,7 +79,6 @@ class _HomeState extends State<Home> {
                         ),
                       ),
                       const SizedBox(width: 10.0),
-                      // ✅ Pin icon
                       GestureDetector(
                         onTap: () {
                           Navigator.push(
@@ -99,25 +127,31 @@ class _HomeState extends State<Home> {
                       ),
                       const SizedBox(width: 10.0),
                       GestureDetector(
-                        onTap: () {
-                          Navigator.push(
+                        onTap: () async {
+                          await Navigator.push(
                             context,
-                            MaterialPageRoute(
-                              builder: (_) => const EditableProfilePage(),
-                            ),
+                            MaterialPageRoute(builder: (_) => const EditableProfilePage()),
                           );
+                          await fetchProfileImage();
                         },
                         child: Material(
                           elevation: 3.0,
                           borderRadius: BorderRadius.circular(60),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(60),
-                            child: Image.asset(
-                              "images/boy.jpg",
-                              height: 50,
-                              width: 50,
-                              fit: BoxFit.cover,
-                            ),
+                            child: profileImageUrl != null && profileImageUrl!.isNotEmpty
+                                ? Image.network(
+                                    profileImageUrl!,
+                                    height: 50,
+                                    width: 50,
+                                    fit: BoxFit.cover,
+                                  )
+                                : Container(
+                                    height: 50,
+                                    width: 50,
+                                    color: Colors.grey[300],
+                                    child: const Icon(Icons.image, color: Colors.white),
+                                  ),
                           ),
                         ),
                       ),
@@ -176,147 +210,197 @@ class _HomeState extends State<Home> {
                 ),
               ],
             ),
+
             const SizedBox(height: 40.0),
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 30.0),
-              child: Material(
-                elevation: 3.0,
-                borderRadius: BorderRadius.circular(20),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(top: 20.0, left: 20.0),
-                        child: Row(
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(30),
-                              child: const Image(
-                                image: AssetImage("images/boy.jpg"),
-                                height: 50,
-                                width: 50,
-                                fit: BoxFit.cover,
+
+            // -------------------------- Firestore Posts --------------------------
+            StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection("posts")
+                  .orderBy("createdAt", descending: true)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                return Column(
+                  children: snapshot.data!.docs.map((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    final postId = doc.id;
+                    final isOwner = data["uid"] == currentUserId;
+
+                    return FutureBuilder<DocumentSnapshot>(
+                      future: FirebaseFirestore.instance.collection("users").doc(data["uid"]).get(),
+                      builder: (context, userSnapshot) {
+                        final userData = userSnapshot.data?.data() as Map<String, dynamic>? ?? {};
+                        final postProfileUrl = userData["profileImageUrl"] ?? "";
+
+                        return _buildPostCard(
+                          postId: postId,
+                          username: data["username"] ?? "Unknown",
+                          imageUrl: data["imageUrl"] ?? "",
+                          location: "${data["place"]}, ${data["city"]}",
+                          caption: data["caption"] ?? "",
+                          profileImageUrl: postProfileUrl,
+                          isOwner: isOwner,
+                        );
+                      },
+                    );
+                  }).toList(),
+                );
+              },
+            ),
+            const SizedBox(height: 30.0),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPostCard({
+    required String postId,
+    required String username,
+    required String imageUrl,
+    required String location,
+    required String caption,
+    required String profileImageUrl,
+    required bool isOwner,
+  }) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 30.0, vertical: 10.0),
+      child: Material(
+        elevation: 3.0,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 20.0, left: 20.0, right: 20.0),
+                child: Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(30),
+                      child: profileImageUrl.isNotEmpty
+                          ? Image.network(
+                              profileImageUrl,
+                              height: 50,
+                              width: 50,
+                              fit: BoxFit.cover,
+                            )
+                          : Container(
+                              height: 50,
+                              width: 50,
+                              decoration: BoxDecoration(
+                                color: Colors.grey[300],
+                                borderRadius: BorderRadius.circular(30),
                               ),
+                              child: const Icon(Icons.image, color: Colors.white),
                             ),
-                            const SizedBox(width: 15.0),
-                            Text(
-                              userName,
-                              style: const TextStyle(
-                                color: Colors.black,
-                                fontSize: 20.0,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
+                    ),
+                    const SizedBox(width: 15.0),
+                    Expanded(
+                      child: Text(
+                        username,
+                        style: const TextStyle(
+                          color: Colors.black,
+                          fontSize: 20.0,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
-                      const SizedBox(height: 20.0),
-                      Image.asset("images/tajmahal.jpg"),
-                      const SizedBox(height: 5.0),
-                      const Padding(
-                        padding: EdgeInsets.only(left: 10.0),
-                        child: Row(
-                          children: [
-                            Icon(Icons.location_on, color: primaryColor),
-                            Text(
-                              "Taj Mahal, Agra, India",
-                              style: TextStyle(
-                                color: Colors.black,
-                                fontSize: 18.0,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
+                    ),
+                    if (isOwner)
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () => deletePost(postId),
                       ),
-                      const SizedBox(height: 5.0),
-                      const Padding(
-                        padding: EdgeInsets.only(left: 10.0),
-                        child: Text(
-                          "Lorem ipsum is simply dummy text of the printing and typesetting industry...",
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontSize: 15.0,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20.0),
+              imageUrl.startsWith("http")
+                  ? Image.network(imageUrl)
+                  : Image.asset(imageUrl),
+              const SizedBox(height: 5.0),
+              Padding(
+                padding: const EdgeInsets.only(left: 10.0),
+                child: Row(
+                  children: [
+                    const Icon(Icons.location_on, color: primaryColor),
+                    Text(
+                      location,
+                      style: const TextStyle(
+                        color: Colors.black,
+                        fontSize: 18.0,
+                        fontWeight: FontWeight.bold,
                       ),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 20.0),
-                        child: Row(
-                          children: [
-                            GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  isLiked = !isLiked;
-                                });
-                              },
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    isLiked ? Icons.favorite : Icons.favorite_outline,
-                                    color: isLiked ? Colors.red : primaryColor,
-                                    size: 30.0,
-                                  ),
-                                  const SizedBox(width: 10.0),
-                                  const Text(
-                                    "Like",
-                                    style: TextStyle(
-                                      color: Colors.black,
-                                      fontSize: 18.0,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 30.0),
-                            GestureDetector(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => Comment(
-                                      postId: 'tajmahal_post_001',
-                                      currentUsername: widget.userData['name'],
-                                    ),
-                                  ),
-                                );
-                              },
-                              child: Row(
-                                children: const [
-                                  Icon(
-                                    Icons.comment_outlined,
-                                    color: primaryColor,
-                                    size: 28.0,
-                                  ),
-                                  SizedBox(width: 10.0),
-                                  Text(
-                                    "Comment",
-                                    style: TextStyle(
-                                      color: Colors.black,
-                                      fontSize: 18.0,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 30.0),
-                    ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 5.0),
+              Padding(
+                padding: const EdgeInsets.only(left: 10.0),
+                child: Text(
+                  caption,
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontSize: 15.0,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
-            ),
-          ],
+              Padding(
+                padding: const EdgeInsets.only(left: 20.0),
+                child: Row(
+                  children: [
+                    const Icon(Icons.favorite_outline, color: primaryColor, size: 30.0),
+                    const SizedBox(width: 10.0),
+                    const Text(
+                      "Like",
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 18.0,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(width: 30.0),
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => Comment(
+                              postId: postId,
+                              currentUsername: username,
+                            ),
+                          ),
+                        );
+                      },
+                      child: Row(
+                        children: const [
+                          Icon(Icons.comment_outlined,
+                              color: primaryColor, size: 28.0),
+                          SizedBox(width: 10.0),
+                          Text(
+                            "Comment",
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 18.0,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 30.0),
+            ],
+          ),
         ),
       ),
     );

@@ -24,20 +24,15 @@ class _CommentState extends State<Comment> {
   @override
   void initState() {
     super.initState();
-    getCurrentUserId();
+    currentUserId = FirebaseAuth.instance.currentUser?.uid;
   }
 
-  Future<void> getCurrentUserId() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      setState(() {
-        currentUserId = user.uid;
-      });
-    }
-  }
-
-  void addOrUpdateComment(String text) async {
+  Future<void> addOrUpdateComment(String text) async {
     if (text.trim().isEmpty || currentUserId == null) return;
+
+    final userDoc = await FirebaseFirestore.instance.collection('users').doc(currentUserId).get();
+    final currentUsername = userDoc.data()?['name'] ?? userDoc.data()?['email'] ?? 'Unknown';
+    final profileImageUrl = userDoc.data()?['profileImageUrl'] ?? '';
 
     if (editingCommentId != null) {
       await FirebaseFirestore.instance
@@ -47,8 +42,9 @@ class _CommentState extends State<Comment> {
       setState(() => editingCommentId = null);
     } else {
       await FirebaseFirestore.instance.collection('comments').add({
-        'username': widget.currentUsername,
+        'username': currentUsername,
         'uid': currentUserId,
+        'profileImageUrl': profileImageUrl,
         'text': text.trim(),
         'postId': widget.postId,
         'timestamp': FieldValue.serverTimestamp(),
@@ -107,89 +103,60 @@ class _CommentState extends State<Comment> {
                 stream: FirebaseFirestore.instance
                     .collection('comments')
                     .where('postId', isEqualTo: widget.postId)
+
                     .snapshots(),
                 builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
+                  if (!snapshot.hasData) {
                     return const Center(child: CircularProgressIndicator());
                   }
 
-                  if (snapshot.hasError) {
-                    return Center(
-                      child: Text("Error: ${snapshot.error}"),
+                  final comments = snapshot.data!.docs;
+
+                  if (comments.isEmpty) {
+                    return const Center(
+                      child: Text("No comments yet."),
                     );
                   }
 
-                  final commentDocs = snapshot.data?.docs ?? [];
-
                   return ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 15),
-                    itemCount: commentDocs.length,
+                    itemCount: comments.length,
                     itemBuilder: (context, index) {
-                      final comment = commentDocs[index];
-                      final data = comment.data() as Map<String, dynamic>;
+                      final data = comments[index].data() as Map<String, dynamic>;
+                      final docId = comments[index].id;
                       final isOwner = data['uid'] == currentUserId;
+                      final profileImageUrl = data['profileImageUrl'];
 
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12.0),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(20),
-                              child: Image.asset(
-                                "images/boy.jpg",
-                                height: 38,
-                                width: 38,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey.shade100,
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          data['username'] ?? '',
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 14,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          data['text'] ?? '',
-                                          style: const TextStyle(fontSize: 14),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  if (isOwner)
-                                    Row(
-                                      children: [
-                                        TextButton(
-                                          onPressed: () => startEditing(comment.id, data['text']),
-                                          child: const Text("Edit", style: TextStyle(fontSize: 12)),
-                                        ),
-                                        TextButton(
-                                          onPressed: () => deleteComment(comment.id),
-                                          child: const Text("Delete", style: TextStyle(fontSize: 12)),
-                                        ),
-                                      ],
-                                    ),
-                                ],
-                              ),
-                            ),
-                          ],
+                      return ListTile(
+                        leading: CircleAvatar(
+                          radius: 20,
+                          backgroundImage: (profileImageUrl != null && profileImageUrl.isNotEmpty)
+                              ? NetworkImage(profileImageUrl)
+                              : null,
+                          child: (profileImageUrl == null || profileImageUrl.isEmpty)
+                              ? const Icon(Icons.person, color: Colors.white)
+                              : null,
+                          backgroundColor: mainColor,
                         ),
+                        title: Text(
+                          data['username'] ?? 'Unknown User',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: Text(data['text'] ?? ''),
+                        trailing: isOwner
+                            ? Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.edit, size: 20),
+                                    onPressed: () => startEditing(docId, data['text']),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete, size: 20),
+                                    onPressed: () => deleteComment(docId),
+                                  ),
+                                ],
+                              )
+                            : null,
                       );
                     },
                   );
@@ -197,7 +164,7 @@ class _CommentState extends State<Comment> {
               ),
             ),
 
-            // Add Comment
+            // Comment Input
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
               decoration: BoxDecoration(

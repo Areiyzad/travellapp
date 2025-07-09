@@ -38,7 +38,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
-            builder: (_) => Home(userData: userDoc.data() as Map<String, dynamic>),
+            builder: (_) =>
+                Home(userData: userDoc.data() as Map<String, dynamic>),
           ),
         );
       } on FirebaseAuthException catch (e) {
@@ -86,6 +87,13 @@ class _LoginScreenState extends State<LoginScreen> {
           child: SingleChildScrollView(
             child: Column(
               children: [
+                // Logo
+                Image.asset(
+                  'images/logo.png',
+                  height: 250,
+                  width: 250,
+                ),
+                const SizedBox(height: 30),
                 const Text(
                   'Welcome Back!',
                   style: TextStyle(

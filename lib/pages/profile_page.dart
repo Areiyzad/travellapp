@@ -3,8 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:firebase_storage/firebase_storage.dart';
-import 'package:travellapp/pages/login.dart'; // updated to LoginScreen!
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:mime/mime.dart';
+import 'package:http_parser/http_parser.dart';
+import 'package:travellapp/pages/login.dart';
 
 class EditableProfilePage extends StatefulWidget {
   const EditableProfilePage({Key? key}) : super(key: key);
@@ -26,6 +29,9 @@ class _EditableProfilePageState extends State<EditableProfilePage> {
   File? selectedImage;
   late User currentUser;
 
+  final String cloudinaryUploadPreset = "travellapp_unsigned";
+  final String cloudinaryCloudName = "dtdn4tdom";
+
   @override
   void initState() {
     super.initState();
@@ -45,36 +51,77 @@ class _EditableProfilePageState extends State<EditableProfilePage> {
     return data;
   }
 
+  Future<String> uploadToCloudinary(File imageFile) async {
+    final mimeType = lookupMimeType(imageFile.path)?.split('/');
+    if (mimeType == null || mimeType.length != 2) {
+      throw Exception("Invalid image MIME type.");
+    }
+
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('https://api.cloudinary.com/v1_1/$cloudinaryCloudName/image/upload'),
+    );
+
+    request.fields['upload_preset'] = cloudinaryUploadPreset;
+    request.files.add(
+      await http.MultipartFile.fromPath(
+        'file',
+        imageFile.path,
+        contentType: MediaType(mimeType[0], mimeType[1]),
+      ),
+    );
+
+    final response = await request.send();
+    if (response.statusCode == 200) {
+      final responseData = await http.Response.fromStream(response);
+      final jsonData = json.decode(responseData.body);
+      return jsonData['secure_url'];
+    } else {
+      throw Exception('Image upload failed');
+    }
+  }
+
   Future<void> saveChanges() async {
     setState(() => isSaving = true);
     String imageUrl = profileImageUrl;
 
-    if (selectedImage != null) {
-      final ref = FirebaseStorage.instance
-          .ref()
-          .child('profile_pictures/${currentUser.uid}');
-      await ref.putFile(selectedImage!);
-      imageUrl = await ref.getDownloadURL();
+    try {
+      if (selectedImage != null) {
+        imageUrl = await uploadToCloudinary(selectedImage!);
+      }
+
+      await FirebaseFirestore.instance.collection('users').doc(currentUser.uid).update({
+        'name': nameController.text.trim(),
+        'email': emailController.text.trim(),
+        'bio': bioController.text.trim(),
+        'profileImageUrl': imageUrl,
+      });
+
+      // Update all posts created by this user with the new image
+      final posts = await FirebaseFirestore.instance
+          .collection('posts')
+          .where('uid', isEqualTo: currentUser.uid)
+          .get();
+
+      for (final doc in posts.docs) {
+        await doc.reference.update({'profileImageUrl': imageUrl});
+      }
+
+      setState(() {
+        isSaving = false;
+        profileImageUrl = imageUrl;
+        selectedImage = null;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Profile updated successfully!")),
+      );
+    } catch (e) {
+      setState(() => isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to update: $e")),
+      );
     }
-
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(currentUser.uid)
-        .update({
-      'name': nameController.text.trim(),
-      'email': emailController.text.trim(),
-      'bio': bioController.text.trim(),
-      'profileImageUrl': imageUrl,
-    });
-
-    setState(() {
-      isSaving = false;
-      profileImageUrl = imageUrl;
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Profile updated successfully!")),
-    );
   }
 
   Future<void> pickImage() async {
@@ -109,7 +156,7 @@ class _EditableProfilePageState extends State<EditableProfilePage> {
     if (!mounted) return;
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(builder: (_) => LoginScreen()), // 👈 correct class name
+      MaterialPageRoute(builder: (_) => LoginScreen()),
       (route) => false,
     );
   }
@@ -152,8 +199,6 @@ class _EditableProfilePageState extends State<EditableProfilePage> {
                 const SizedBox(height: 10),
                 const Text("Tap to change profile picture"),
                 const SizedBox(height: 20),
-
-                // Name
                 TextField(
                   controller: nameController,
                   decoration: InputDecoration(
@@ -165,8 +210,6 @@ class _EditableProfilePageState extends State<EditableProfilePage> {
                   ),
                 ),
                 const SizedBox(height: 20),
-
-                // Email
                 TextField(
                   controller: emailController,
                   decoration: InputDecoration(
@@ -178,8 +221,6 @@ class _EditableProfilePageState extends State<EditableProfilePage> {
                   ),
                 ),
                 const SizedBox(height: 20),
-
-                // Bio
                 TextField(
                   controller: bioController,
                   maxLines: 3,
@@ -192,7 +233,6 @@ class _EditableProfilePageState extends State<EditableProfilePage> {
                   ),
                 ),
                 const SizedBox(height: 30),
-
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: mainColor,
@@ -204,8 +244,6 @@ class _EditableProfilePageState extends State<EditableProfilePage> {
                   label: Text(isSaving ? "Saving..." : "Save Changes"),
                 ),
                 const SizedBox(height: 30),
-
-                // Password
                 TextField(
                   controller: passwordController,
                   obscureText: true,

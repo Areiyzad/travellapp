@@ -31,6 +31,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           'name': _nameController.text.trim(),
           'email': _emailController.text.trim(),
           'createdAt': Timestamp.now(),
+          'profileImageUrl': '',
         };
 
         await FirebaseFirestore.instance
