@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:travellapp/pages/add_page.dart';
 import 'package:travellapp/pages/comment.dart';
+import 'package:travellapp/pages/profile_page.dart';
+import 'package:travellapp/pages/top_places.dart'; // Dream Itinerary feature
 
-const Color primaryColor = Color(0xFF26a69a); // 💚 Main color
+const Color primaryColor = Color(0xFF26a69a);
 
 class Home extends StatefulWidget {
-  const Home({super.key});
+  final Map<String, dynamic> userData;
+
+  const Home({super.key, required this.userData});
 
   @override
   State<Home> createState() => _HomeState();
@@ -16,6 +20,8 @@ class _HomeState extends State<Home> {
 
   @override
   Widget build(BuildContext context) {
+    final String userName = widget.userData['name'] ?? 'Traveler';
+
     return Scaffold(
       body: SingleChildScrollView(
         child: Column(
@@ -30,23 +36,43 @@ class _HomeState extends State<Home> {
                   fit: BoxFit.cover,
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(top: 40.0, right: 20.0),
+                  padding: const EdgeInsets.only(top: 40.0, right: 20.0, left: 20.0),
                   child: Row(
                     children: [
-                      Material(
-                        elevation: 3.0,
-                        borderRadius: BorderRadius.circular(10),
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Image.asset(
-                            "images/pin.png",
-                            height: 40.0,
-                            width: 40.0,
-                            fit: BoxFit.cover,
+                      // ✅ Circular logo
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(30),
+                        child: Image.asset(
+                          "images/logo.png",
+                          height: 65,
+                          width: 50,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      const SizedBox(width: 10.0),
+                      // ✅ Pin icon
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const TopPlacesPage()),
+                          );
+                        },
+                        child: Material(
+                          elevation: 3.0,
+                          borderRadius: BorderRadius.circular(10),
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Image.asset(
+                              "images/itinerary.png",
+                              height: 40.0,
+                              width: 40.0,
+                              fit: BoxFit.cover,
+                            ),
                           ),
                         ),
                       ),
@@ -55,7 +81,7 @@ class _HomeState extends State<Home> {
                         onTap: () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (context) => const AddPage()),
+                            MaterialPageRoute(builder: (_) => const AddPage()),
                           );
                         },
                         child: Material(
@@ -67,25 +93,31 @@ class _HomeState extends State<Home> {
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: Icon(
-                              Icons.add,
-                              color: primaryColor,
-                              size: 30.0,
-                            ),
+                            child: Icon(Icons.add, color: primaryColor, size: 30.0),
                           ),
                         ),
                       ),
                       const SizedBox(width: 10.0),
-                      Material(
-                        elevation: 3.0,
-                        borderRadius: BorderRadius.circular(60),
-                        child: ClipRRect(
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const EditableProfilePage(),
+                            ),
+                          );
+                        },
+                        child: Material(
+                          elevation: 3.0,
                           borderRadius: BorderRadius.circular(60),
-                          child: Image.asset(
-                            "images/boy.jpg",
-                            height: 50,
-                            width: 50,
-                            fit: BoxFit.cover,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(60),
+                            child: Image.asset(
+                              "images/boy.jpg",
+                              height: 50,
+                              width: 50,
+                              fit: BoxFit.cover,
+                            ),
                           ),
                         ),
                       ),
@@ -101,7 +133,6 @@ class _HomeState extends State<Home> {
                         "Hey, Travelers!",
                         style: TextStyle(
                           color: Colors.white,
-                          fontFamily: 'Lato',
                           fontSize: 60.0,
                           fontWeight: FontWeight.w500,
                         ),
@@ -173,9 +204,9 @@ class _HomeState extends State<Home> {
                               ),
                             ),
                             const SizedBox(width: 15.0),
-                            const Text(
-                              "Shahbaz Khan",
-                              style: TextStyle(
+                            Text(
+                              userName,
+                              style: const TextStyle(
                                 color: Colors.black,
                                 fontSize: 20.0,
                                 fontWeight: FontWeight.w500,
@@ -207,7 +238,7 @@ class _HomeState extends State<Home> {
                       const Padding(
                         padding: EdgeInsets.only(left: 10.0),
                         child: Text(
-                          "Loremipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s...",
+                          "Lorem ipsum is simply dummy text of the printing and typesetting industry...",
                           style: TextStyle(
                             color: Colors.black,
                             fontSize: 15.0,
@@ -250,11 +281,9 @@ class _HomeState extends State<Home> {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => const Comment(
-                                      username: 'Shahbaz Khan',
-                                      caption:
-                                          "Loremipsum is simply dummy text of the printing and typesetting industry...",
-                                      imagePath: "images/tajmahal.jpg",
+                                    builder: (_) => Comment(
+                                      postId: 'tajmahal_post_001',
+                                      currentUsername: widget.userData['name'],
                                     ),
                                   ),
                                 );

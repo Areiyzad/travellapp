@@ -20,7 +20,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
   void _signUp() async {
     if (_formKey.currentState!.validate() && _agreeToTerms) {
       setState(() => _isLoading = true);
-
       try {
         UserCredential userCredential = await FirebaseAuth.instance
             .createUserWithEmailAndPassword(
@@ -28,14 +27,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
           password: _passwordController.text.trim(),
         );
 
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(userCredential.user!.uid)
-            .set({
+        final userData = {
           'name': _nameController.text.trim(),
           'email': _emailController.text.trim(),
           'createdAt': Timestamp.now(),
-        });
+        };
+
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userCredential.user!.uid)
+            .set(userData);
 
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('Account Created Successfully!'),
@@ -43,7 +44,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         ));
 
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => Home()),
+          MaterialPageRoute(builder: (_) => Home(userData: userData)),
         );
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(

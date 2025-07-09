@@ -37,7 +37,9 @@ class _LoginScreenState extends State<LoginScreen> {
         ));
 
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => Home()),
+          MaterialPageRoute(
+            builder: (_) => Home(userData: userDoc.data() as Map<String, dynamic>),
+          ),
         );
       } on FirebaseAuthException catch (e) {
         String error = '';
@@ -75,7 +77,7 @@ class _LoginScreenState extends State<LoginScreen> {
         padding: EdgeInsets.all(24),
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFFB2DFDB), Color(0xFFB2DFDB)], // soft minty background
+            colors: [Color(0xFFB2DFDB), Color(0xFFB2DFDB)],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -89,7 +91,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF26A69A), // consistent with splash screen
+                    color: Color(0xFF26A69A),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -146,15 +148,14 @@ class _LoginScreenState extends State<LoginScreen> {
                         onPressed: _isLoading ? null : _login,
                         style: ElevatedButton.styleFrom(
                           minimumSize: Size(double.infinity, 48),
-                          backgroundColor: Color(0xFF26A69A), // button color
+                          backgroundColor: Color(0xFF26A69A),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
                         child: _isLoading
                             ? CircularProgressIndicator(
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                    Colors.white),
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                               )
                             : Text('Login'),
                       ),

@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class Comment extends StatefulWidget {
-  final String username;
-  final String caption;
-  final String imagePath;
+  final String postId;
+  final String currentUsername;
 
   const Comment({
     super.key,
-    required this.username,
-    required this.caption,
-    required this.imagePath,
+    required this.postId,
+    required this.currentUsername,
   });
 
   @override
@@ -20,9 +19,25 @@ class Comment extends StatefulWidget {
 class _CommentState extends State<Comment> {
   final TextEditingController commentController = TextEditingController();
   String? editingCommentId;
+  String? currentUserId;
+
+  @override
+  void initState() {
+    super.initState();
+    getCurrentUserId();
+  }
+
+  Future<void> getCurrentUserId() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      setState(() {
+        currentUserId = user.uid;
+      });
+    }
+  }
 
   void addOrUpdateComment(String text) async {
-    if (text.trim().isEmpty) return;
+    if (text.trim().isEmpty || currentUserId == null) return;
 
     if (editingCommentId != null) {
       await FirebaseFirestore.instance
@@ -32,16 +47,15 @@ class _CommentState extends State<Comment> {
       setState(() => editingCommentId = null);
     } else {
       await FirebaseFirestore.instance.collection('comments').add({
-        'username': widget.username,
+        'username': widget.currentUsername,
+        'uid': currentUserId,
         'text': text.trim(),
-        'image': widget.imagePath,
+        'postId': widget.postId,
         'timestamp': FieldValue.serverTimestamp(),
       });
     }
 
-    if (editingCommentId == null) {
-      commentController.clear();
-    }
+    commentController.clear();
   }
 
   void deleteComment(String docId) async {
@@ -57,14 +71,14 @@ class _CommentState extends State<Comment> {
 
   @override
   Widget build(BuildContext context) {
-    const mainColor = Color(0xFF26a69a); // 💚 Consistent color
+    const mainColor = Color(0xFF26a69a);
 
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
           children: [
-            // Top Bar
+            // Header
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 15),
               child: Row(
@@ -85,60 +99,27 @@ class _CommentState extends State<Comment> {
                 ],
               ),
             ),
-
-            // Post Info
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(25),
-                    child: Image.asset(
-                      "images/boy.jpg",
-                      height: 45,
-                      width: 45,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.username,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                        const SizedBox(height: 5),
-                        Text(
-                          widget.caption,
-                          style: const TextStyle(fontSize: 15),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
             const Divider(),
 
-            // Comment List
+            // Comments List
             Expanded(
               child: StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance
                     .collection('comments')
-                    .orderBy('timestamp', descending: true)
+                    .where('postId', isEqualTo: widget.postId)
                     .snapshots(),
                 builder: (context, snapshot) {
-                  if (!snapshot.hasData) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
                   }
 
-                  final commentDocs = snapshot.data!.docs;
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Text("Error: ${snapshot.error}"),
+                    );
+                  }
+
+                  final commentDocs = snapshot.data?.docs ?? [];
 
                   return ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 15),
@@ -146,6 +127,7 @@ class _CommentState extends State<Comment> {
                     itemBuilder: (context, index) {
                       final comment = commentDocs[index];
                       final data = comment.data() as Map<String, dynamic>;
+                      final isOwner = data['uid'] == currentUserId;
 
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 12.0),
@@ -176,7 +158,7 @@ class _CommentState extends State<Comment> {
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          data['username'],
+                                          data['username'] ?? '',
                                           style: const TextStyle(
                                             fontWeight: FontWeight.bold,
                                             fontSize: 14,
@@ -184,13 +166,13 @@ class _CommentState extends State<Comment> {
                                         ),
                                         const SizedBox(height: 4),
                                         Text(
-                                          data['text'],
+                                          data['text'] ?? '',
                                           style: const TextStyle(fontSize: 14),
                                         ),
                                       ],
                                     ),
                                   ),
-                                  if (data['username'] == widget.username)
+                                  if (isOwner)
                                     Row(
                                       children: [
                                         TextButton(
@@ -215,7 +197,7 @@ class _CommentState extends State<Comment> {
               ),
             ),
 
-            // Input Field
+            // Add Comment
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
               decoration: BoxDecoration(
@@ -227,7 +209,9 @@ class _CommentState extends State<Comment> {
                     child: TextField(
                       controller: commentController,
                       decoration: InputDecoration(
-                        hintText: editingCommentId != null ? "Edit comment..." : "Add a comment...",
+                        hintText: editingCommentId != null
+                            ? "Edit comment..."
+                            : "Write a comment...",
                         border: InputBorder.none,
                       ),
                     ),
