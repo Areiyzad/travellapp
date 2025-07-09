@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:random_string/random_string.dart';
 
 class AddPage extends StatefulWidget {
@@ -35,47 +36,15 @@ class _AddPageState extends State<AddPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFececf8),
+      appBar: AppBar(
+        backgroundColor: mainColor,
+        title: const Text("Add Post"),
+        centerTitle: false, // 🔁 Title aligned to the left
+      ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // AppBar Row
-          Padding(
-            padding: const EdgeInsets.only(left: 20.0, top: 40.0),
-            child: Row(
-              children: [
-                GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: Material(
-                    elevation: 3.0,
-                    borderRadius: BorderRadius.circular(30.0),
-                    child: Container(
-                      padding: const EdgeInsets.all(5.0),
-                      decoration: BoxDecoration(
-                        color: mainColor,
-                        borderRadius: BorderRadius.circular(30.0),
-                      ),
-                      child: const Icon(
-                        Icons.arrow_back_ios_new_outlined,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(width: MediaQuery.of(context).size.width / 4.5),
-                Text(
-                  "Add Post",
-                  style: TextStyle(
-                    color: mainColor,
-                    fontSize: 30.0,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
           const SizedBox(height: 30.0),
-
-          // Main Content Container
           Expanded(
             child: Material(
               elevation: 3.0,
@@ -96,7 +65,6 @@ class _AddPageState extends State<AddPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Camera Container
                       Center(
                         child: GestureDetector(
                           onTap: getImage,
@@ -120,8 +88,6 @@ class _AddPageState extends State<AddPage> {
                         ),
                       ),
                       const SizedBox(height: 20.0),
-
-                      // Place Name
                       Text(
                         "Place Name",
                         style: TextStyle(
@@ -147,8 +113,6 @@ class _AddPageState extends State<AddPage> {
                         ),
                       ),
                       const SizedBox(height: 20.0),
-
-                      // City Name
                       Text(
                         "City Name",
                         style: TextStyle(
@@ -174,8 +138,6 @@ class _AddPageState extends State<AddPage> {
                         ),
                       ),
                       const SizedBox(height: 20.0),
-
-                      // Caption
                       Text(
                         "Caption",
                         style: TextStyle(
@@ -202,8 +164,6 @@ class _AddPageState extends State<AddPage> {
                         ),
                       ),
                       const SizedBox(height: 30.0),
-
-                      // Post Button
                       Center(
                         child: GestureDetector(
                           onTap: () async {
@@ -223,19 +183,29 @@ class _AddPageState extends State<AddPage> {
                               String downloadUrl =
                                   await firebaseStorageRef.getDownloadURL();
 
-                              await FirebaseFirestore.instance.collection("posts").add({
-                                "imageUrl": downloadUrl,
-                                "place": placenamecontroller.text.trim(),
-                                "city": citynamecontroller.text.trim(),
-                                "caption": captioncontroller.text.trim(),
-                                "createdAt": FieldValue.serverTimestamp(),
-                              });
+                              User? currentUser = FirebaseAuth.instance.currentUser;
+                              if (currentUser != null) {
+                                DocumentSnapshot userDoc = await FirebaseFirestore.instance
+                                    .collection('users')
+                                    .doc(currentUser.uid)
+                                    .get();
+                                String username = userDoc['name'] ?? 'Unknown';
 
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text("✅ Post uploaded to Firestore!")),
-                              );
+                                await FirebaseFirestore.instance.collection("posts").add({
+                                  "imageUrl": downloadUrl,
+                                  "place": placenamecontroller.text.trim(),
+                                  "city": citynamecontroller.text.trim(),
+                                  "caption": captioncontroller.text.trim(),
+                                  "username": username,
+                                  "createdAt": FieldValue.serverTimestamp(),
+                                });
 
-                              Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text("✅ Post uploaded to Firestore!")),
+                                );
+
+                                Navigator.pop(context);
+                              }
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(content: Text("Please complete all fields.")),

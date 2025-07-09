@@ -36,6 +36,8 @@ dependencies:
   image_picker: ^1.0.4
   firebase_storage: ^11.6.6
   random_string: ^2.3.1
+  pdf: ^3.10.4
+  printing: ^5.12.0
 
 
 
